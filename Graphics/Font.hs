@@ -11,6 +11,7 @@ import Control.Applicative
 
 import Graphics.Font.FontLibrary
 import Graphics.Font.FontFace
+import Graphics.Font.BitmapLoader
 
 import Codec.Picture
 
@@ -27,6 +28,11 @@ data Font = Font
     , libRef    :: Weak FontLibrary
     }
 
+data FontLoadMode = 
+      Gray8
+    | Monochrome
+
+
 loadFont :: FilePath -> FontDescriptor -> IO Font
 loadFont fontfile descr@FontDescriptor{..} = do
     lib  <- makeLibrary
@@ -37,9 +43,14 @@ loadFont fontfile descr@FontDescriptor{..} = do
     where
         setSizes = flip . flip setFaceCharSize
 
-generateCharImg :: Font -> Char -> Image Pixel8
-generateCharImg font char = unsafePerformIO $
-    loadFaceCharImage (fontFace font) char LoadRender
+generateCharImg :: Font -> Char -> FontLoadMode -> Image Pixel8
+generateCharImg font char mode = 
+    case mode of
+        Gray8      -> load grayLoader [LoadRender]
+        Monochrome -> load monoLoader [LoadRender, LoadMonochrome]
+    where
+        load loader flags = unsafePerformIO $ loadFaceCharImage (fontFace font) char flags loader
 
-generateAllCharImgs :: Font -> Map Char (Image Pixel8)
-generateAllCharImgs font = mapWithKey (\c _ -> generateCharImg font c) (charMap font)
+
+generateAllCharImgs :: Font -> FontLoadMode -> Map Char (Image Pixel8)
+generateAllCharImgs font mode = mapWithKey (\c _ -> generateCharImg font c mode) (charMap font)

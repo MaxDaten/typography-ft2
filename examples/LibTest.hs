@@ -20,7 +20,11 @@ import Data.Map (toList)
 import Graphics.Font
 import Codec.Picture
 
-
+{--
+" !\"#$%&'()*+,-./0123456789:;<=>?"
+"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+"`abcdefghijklmnopqrstuvwxyz{|}~"
+--}
 
 fontPath = "font" </> "SourceCodePro-Regular.otf"
 charFolder = "chars"
@@ -30,7 +34,7 @@ main = do
             , deviceRes = (600, 600)
             }
     font <- loadFont fontPath descr
-    let imgs = generateAllCharImgs font
+    let imgs = generateAllCharImgs font Monochrome
 
     forM_ (toList imgs) $ \(c, img) -> do
         writePng (charFolder </> "char" ++ (show $ ord c) ++ ".png") img

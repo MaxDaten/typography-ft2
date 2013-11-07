@@ -18,10 +18,8 @@ import Graphics.Rendering.FreeType.Internal.Bitmap as B
 import Graphics.Rendering.FreeType.Internal.PrimitiveTypes as PT
 import Graphics.Rendering.FreeType.Internal.GlyphSlot as GS
 
-
-
-
 import Graphics.Font.FontLibrary
+import Graphics.Font.BitmapLoader
 
 import Codec.Picture
 
@@ -120,6 +118,7 @@ setFaceCharSize face (charWidth, charHeigt) (devWidth, devHeight) =
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
         return face
 
+
 getAllFaceCharIndices :: FontFace -> IO [(GlyphIndex, Char)]
 getAllFaceCharIndices face =
     withForeignPtr (faceFrgnPtr face) $ \ptr -> do
@@ -139,18 +138,21 @@ getAllFaceCharIndices face =
                         else []) ++ ls
 
 
-loadFaceCharImage :: FontFace -> Char -> LoadMode -> IO (Image Pixel8)
-loadFaceCharImage face code mode =
+loadFaceCharImage :: (Pixel a) => FontFace -> Char -> [LoadMode] -> FontBitmapLoader IO a -> IO (Image a)
+loadFaceCharImage face code mode imageLoader =
     withForeignPtr (faceFrgnPtr face) $ \ptr -> do
-        err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (toLoadFlag mode)
+        let flags = foldr ((.|.) . toLoadFlag) 0 mode
+
+        err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (flags)
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
+
         slot    <- peek $ glyph ptr
         bm      <- peek $ bitmap slot
+
         let w = fromIntegral $ width bm
             h = fromIntegral $ rows bm
-        withImage w h $ \x y ->
-            let index = y * w + x 
-            in peek $ (buffer bm) `plusPtr` (fromIntegral index)
+        withImage w h (imageLoader bm)
+
 
 
 {--
