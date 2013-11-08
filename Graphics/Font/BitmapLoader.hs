@@ -8,7 +8,7 @@ import Graphics.Rendering.FreeType.Internal.Bitmap as B
 import Codec.Picture
 
 
-type FontBitmapLoader m pixel =  FT_Bitmap -> Int -> Int -> m pixel
+type FontBitmapLoader m pixel = FT_Bitmap -> Int -> Int -> m pixel
 
 
 

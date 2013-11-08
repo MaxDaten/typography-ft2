@@ -22,7 +22,8 @@ data FontDescriptor = FontDescriptor
 
 
 data Font = Font
-    { charMap   :: Map Char GlyphIndex 
+    { fontname  :: String
+    , charMap   :: Map Char GlyphIndex 
     , fontDescr :: FontDescriptor
     , fontFace  :: FontFace
     , libRef    :: Weak FontLibrary
@@ -39,12 +40,13 @@ loadFont fontfile descr@FontDescriptor{..} = do
     face <- setSizes charSize deviceRes =<< newFontFace lib fontfile 0
     cMap <- fromList . map swap  <$> getAllFaceCharIndices face
     ref  <- mkWeak face lib (Just $ freeLibrary lib)
-    return $ Font cMap descr face ref
+    let fontName = (familyName face) ++ "-" ++ (styleName face)
+    return $ Font fontName cMap descr face ref
     where
         setSizes = flip . flip setFaceCharSize
 
-generateCharImg :: Font -> Char -> FontLoadMode -> Image Pixel8
-generateCharImg font char mode = 
+generateCharImg :: Font -> FontLoadMode -> Char -> Image Pixel8
+generateCharImg font mode char = 
     case mode of
         Gray8      -> load grayLoader [LoadRender]
         Monochrome -> load monoLoader [LoadRender, LoadMonochrome]
@@ -53,4 +55,4 @@ generateCharImg font char mode =
 
 
 generateAllCharImgs :: Font -> FontLoadMode -> Map Char (Image Pixel8)
-generateAllCharImgs font mode = mapWithKey (\c _ -> generateCharImg font c mode) (charMap font)
+generateAllCharImgs font mode = mapWithKey (\c _ -> generateCharImg font mode c) (charMap font)
