@@ -18,6 +18,7 @@ import Data.Char
 import Data.Map (toList)
 
 import Graphics.Font
+import Graphics.Font.FontGlyph
 import Codec.Picture
 
 {--
@@ -36,5 +37,7 @@ main = do
     font <- loadFont fontPath descr
     let imgs = generateAllCharImgs font Monochrome
 
-    forM_ (toList imgs) $ \(c, img) -> do
+    forM_ (toList imgs) $ \(c, (glyph, img)) -> do
+        print c
+        print $ glyphMetrics glyph
         writePng (charFolder </> "char" ++ (show $ ord c) ++ ".png") img

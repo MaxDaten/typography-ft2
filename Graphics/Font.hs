@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns  #-}
 module Graphics.Font where
 
 import Foreign hiding (newForeignPtr, unsafePerformIO)
@@ -11,6 +12,7 @@ import Control.Applicative
 
 import Graphics.Font.FontLibrary
 import Graphics.Font.FontFace
+import Graphics.Font.FontGlyph
 import Graphics.Font.BitmapLoader
 
 import Codec.Picture
@@ -45,6 +47,12 @@ loadFont fontfile descr@FontDescriptor{..} = do
     where
         setSizes = flip . flip setFaceCharSize
 
+
+loadCharGlyph :: Font -> [LoadMode] -> Char -> FontGlyph
+loadCharGlyph Font{fontFace} mode c = 
+    unsafePerformIO $ getFaceGlyphIndex fontFace c >>= flip (loadGlyph fontFace) mode
+
+
 generateCharImg :: Font -> FontLoadMode -> Char -> Image Pixel8
 generateCharImg font mode char = 
     case mode of
@@ -54,5 +62,9 @@ generateCharImg font mode char =
         load loader flags = unsafePerformIO $ loadFaceCharImage (fontFace font) char flags loader
 
 
-generateAllCharImgs :: Font -> FontLoadMode -> Map Char (Image Pixel8)
-generateAllCharImgs font mode = mapWithKey (\c _ -> generateCharImg font mode c) (charMap font)
+generateAllCharImgs :: Font -> FontLoadMode -> Map Char (FontGlyph, Image Pixel8)
+generateAllCharImgs font mode = mapWithKey (\c _ -> (fontGlyph c, charImg c)) (charMap font)
+    where 
+        charImg = generateCharImg font mode
+        fontGlyph = loadCharGlyph font [LoadDefault] -- here is no rendering needed
+

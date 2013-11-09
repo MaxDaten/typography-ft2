@@ -23,6 +23,7 @@ Flag library-only
 library
   exposed-modules:        Graphics.Font.FontLibrary
                           Graphics.Font.FontFace
+                          Graphics.Font.FontGlyph
                           Graphics.Font
                           Graphics.Font.BitmapLoader
   -- other-modules:       

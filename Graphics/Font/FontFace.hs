@@ -141,9 +141,8 @@ getAllFaceCharIndices face =
 loadFaceCharImage :: (Pixel a) => FontFace -> Char -> [LoadMode] -> FontBitmapLoader IO a -> IO (Image a)
 loadFaceCharImage face code mode imageLoader =
     withForeignPtr (faceFrgnPtr face) $ \ptr -> do
-        let flags = foldr ((.|.) . toLoadFlag) 0 mode
 
-        err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (flags)
+        err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (loadModeBits mode)
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
 
         slot    <- peek $ glyph ptr
@@ -154,6 +153,8 @@ loadFaceCharImage face code mode imageLoader =
         withImage w h (imageLoader bm)
 
 
+loadModeBits :: [LoadMode] -> Int32
+loadModeBits = foldr ((.|.) . toLoadFlag) 0
 
 {--
 data RenderMode =
@@ -170,10 +171,7 @@ toRenderModeFlag RenderModeLCD = ft_RENDER_MODE_LCD
 
 
 {--
-getFaceGlyphIndex :: FontFace -> CharCode -> IO GlyphIndex
-getFaceGlyphIndex face code =
-    withForeignPtr (faceFrgnPtr face) $ \ptr -> 
-        fromIntegral <$> ft_Get_Char_Index ptr (fromIntegral code)
+
 
 
 type GlypLoadFlags = Int
