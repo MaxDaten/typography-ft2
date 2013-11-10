@@ -1,4 +1,8 @@
-module Graphics.Font.FontGlyph where
+{-# LANGUAGE RecordWildCards            #-}
+module Graphics.Font.FontGlyph
+    ( module Graphics.Font.FontGlyph
+    , module GM
+    ) where
 
 import Foreign hiding (newForeignPtr)
 import Foreign.Ptr
@@ -21,10 +25,20 @@ import Graphics.Rendering.FreeType.Internal.GlyphMetrics as GM
 
 import Graphics.Font.FontFace
 
-type GlypMetrics = FT_Glyph_Metrics
+data GlyphMetrics = GlyphMetrics
+    { glyWidth         :: Integer
+    , glyHeight        :: Integer
+    , glyHoriBearingX  :: Integer
+    , glyHoriBearingY  :: Integer
+    , glyHoriAdvance   :: Integer
+    , glyVertBearingX  :: Integer
+    , glyVertBearingY  :: Integer
+    , glyVertAdvance   :: Integer
+    } deriving (Show)
+
 data FontGlyph = FontGlyph
     { glyphIndex    :: GlyphIndex
-    , glyphMetrics  :: GlypMetrics
+    , glyphMetrics  :: GlyphMetrics
     } -- leeek! the glyph isnt freed
 
 
@@ -38,12 +52,12 @@ loadGlyph face gindex mode = do
         
         -- recieve the glyph and its metrics from slot and store it in the ptr
         slot <- peek $ glyph fptr
-        m <- peek $ GS.metrics slot
+        ftMetric <- peek $ GS.metrics slot
         errG <- ft_Get_Glyph slot g
 
         when (errG /= 0) $ error $ "ft_Get_Glyph error: " ++ show errG
         free g
-        return $ FontGlyph gindex m
+        return $ FontGlyph gindex $ toHSMetrics ftMetric
     where       
         newFontGlyphPtr :: IO (Ptr FT_Glyph)
         newFontGlyphPtr = malloc
@@ -55,3 +69,15 @@ getFaceGlyphIndex face char =
     withForeignPtr (faceFrgnPtr face) $ \ptr -> 
         fromIntegral <$> (ft_Get_Char_Index ptr (fromIntegral $ ord char))
 
+
+toHSMetrics :: FT_Glyph_Metrics -> GlyphMetrics
+toHSMetrics FT_Glyph_Metrics{..} = GlyphMetrics
+    { glyWidth         = fromIntegral $ width
+    , glyHeight        = fromIntegral $ height
+    , glyHoriBearingX  = fromIntegral $ horiBearingX
+    , glyHoriBearingY  = fromIntegral $ horiBearingY
+    , glyHoriAdvance   = fromIntegral $ horiAdvance
+    , glyVertBearingX  = fromIntegral $ vertBearingX
+    , glyVertBearingY  = fromIntegral $ vertBearingY
+    , glyVertAdvance   = fromIntegral $ vertAdvance
+    }

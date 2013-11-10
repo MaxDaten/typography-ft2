@@ -3,6 +3,7 @@ http://www.freetype.org/freetype2/docs/tutorial/step1.html
 --}
 module Main where
 
+import Prelude hiding (lookup)
 import Foreign hiding (newForeignPtr, unsafePerformIO)
 import Foreign.Marshal
 import Foreign.Concurrent
@@ -15,7 +16,7 @@ import Control.Applicative
 import System.FilePath
 
 import Data.Char
-import Data.Map (toList)
+import Data.Map (toList, lookup)
 
 import Graphics.Font
 import Graphics.Font.FontGlyph
@@ -37,7 +38,7 @@ main = do
     font <- loadFont fontPath descr
     let imgs = generateAllCharImgs font Monochrome
 
-    forM_ (toList imgs) $ \(c, (glyph, img)) -> do
+    forM_ (toList imgs) $ \(c, img) -> do
         print c
-        print $ glyphMetrics glyph
+        print $ glyphMetrics <$> (lookup c $ charMap font)
         writePng (charFolder </> "char" ++ (show $ ord c) ++ ".png") img
