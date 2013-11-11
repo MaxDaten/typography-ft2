@@ -38,6 +38,9 @@ data FontFace = FontFace
     , numFixedSizes :: Int
     -- availableSizes
     , numCharMaps   :: Int
+    , ascender      :: Int -- Int16
+    , descender     :: Int -- Int16
+    , lineHeight    :: Int -- Int16
     -- charmaps
     -- generic
     -- bbox
@@ -102,6 +105,9 @@ newFontFace lib fontfile index =
                 <*> (peekCString  =<< fPtr `doPeek` style_name)
                 <*> (fromIntegral <$> fPtr `doPeek` num_fixed_sizes)
                 <*> (fromIntegral <$> fPtr `doPeek` num_charmaps)
+                <*> (fromIntegral <$> fPtr `doPeek` F.ascender)
+                <*> (fromIntegral <$> fPtr `doPeek` F.descender)
+                <*> (fromIntegral <$> fPtr `doPeek` height)
     where
         doPeek ptr f = withForeignPtr ptr (peek . f)
         free ptr = do

@@ -3,6 +3,7 @@
 {-# LANGUAGE TupleSections   #-}
 module Graphics.Font
     ( module Graphics.Font
+    , module FontFace
     , module Graphics.Font.FontGlyph
     ) where
 
@@ -16,7 +17,7 @@ import Control.Applicative
 import Control.Monad
 
 import Graphics.Font.FontLibrary
-import Graphics.Font.FontFace
+import Graphics.Font.FontFace as FontFace
 import Graphics.Font.FontGlyph
 import Graphics.Font.BitmapLoader
 
@@ -48,7 +49,7 @@ loadFont fontfile descr@FontDescriptor{..} = do
 
     indices <- getAllFaceCharIndices face
     cMap <- fromList <$> mapM (toGlyph face) indices
-    
+
     ref  <- mkWeak face lib (Just $ freeLibrary lib)
     let fontName = (familyName face) ++ "-" ++ (styleName face)
     return $ Font fontName cMap descr face ref
