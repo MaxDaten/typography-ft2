@@ -18,7 +18,7 @@ monoLoader bitmap x y =
         (rowByte, inByte) = x `divMod` 8
         index             = y * p + rowByte 
     in do
-        byte <- peek $ (buffer bitmap) `plusPtr` (fromIntegral index) :: IO Word8
+        byte <- peek $ buffer bitmap `plusPtr` fromIntegral index :: IO Word8
         return $ 
             if testBit byte (7 - inByte)  -- the pixels are stored in most significant order
             then maxBound
@@ -29,4 +29,4 @@ grayLoader :: FontBitmapLoader IO Pixel8
 grayLoader bitmap x y =
     let w       = fromIntegral $ width bitmap
         index   = y * w + x 
-    in peek $ (buffer bitmap) `plusPtr` (fromIntegral index)
+    in peek $ buffer bitmap `plusPtr` fromIntegral index

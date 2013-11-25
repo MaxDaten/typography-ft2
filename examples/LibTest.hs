@@ -40,5 +40,5 @@ main = do
 
     forM_ (toList imgs) $ \(c, img) -> do
         print c
-        print $ glyphMetrics <$> (lookup c $ charMap font)
-        writePng (charFolder </> "char" ++ (show $ ord c) ++ ".png") img
+        print $ glyphMetrics <$> lookup c (charMap font)
+        writePng (charFolder </> "char" ++ show (ord c) ++ ".png") img

@@ -67,17 +67,17 @@ loadGlyph face gindex mode = do
 getFaceGlyphIndex :: FontFace -> Char -> IO GlyphIndex
 getFaceGlyphIndex face char =
     withForeignPtr (faceFrgnPtr face) $ \ptr -> 
-        fromIntegral <$> (ft_Get_Char_Index ptr (fromIntegral $ ord char))
+        fromIntegral <$> ft_Get_Char_Index ptr (fromIntegral $ ord char)
 
 
 toHSMetrics :: FT_Glyph_Metrics -> GlyphMetrics
 toHSMetrics FT_Glyph_Metrics{..} = GlyphMetrics
-    { glyWidth         = fromIntegral $ width
-    , glyHeight        = fromIntegral $ height
-    , glyHoriBearingX  = fromIntegral $ horiBearingX
-    , glyHoriBearingY  = fromIntegral $ horiBearingY
-    , glyHoriAdvance   = fromIntegral $ horiAdvance
-    , glyVertBearingX  = fromIntegral $ vertBearingX
-    , glyVertBearingY  = fromIntegral $ vertBearingY
-    , glyVertAdvance   = fromIntegral $ vertAdvance
+    { glyWidth         = fromIntegral width
+    , glyHeight        = fromIntegral height
+    , glyHoriBearingX  = fromIntegral horiBearingX
+    , glyHoriBearingY  = fromIntegral horiBearingY
+    , glyHoriAdvance   = fromIntegral horiAdvance
+    , glyVertBearingX  = fromIntegral vertBearingX
+    , glyVertBearingY  = fromIntegral vertBearingY
+    , glyVertAdvance   = fromIntegral vertAdvance
     }

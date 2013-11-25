@@ -2,17 +2,12 @@ module Graphics.Font.FontLibrary where
 
 
 import Foreign hiding (newForeignPtr, unsafePerformIO)
-import Foreign.Marshal
-import Foreign.Concurrent
-import Foreign.C.String
 
 import Control.Monad
 
 
 import Graphics.Rendering.FreeType.Internal as FT
 import Graphics.Rendering.FreeType.Internal.Library as L
-import Graphics.Rendering.FreeType.Internal.PrimitiveTypes as PT
-
 
 
 type FontLibrary = FT_Library

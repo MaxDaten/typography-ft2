@@ -51,7 +51,7 @@ loadFont fontfile descr@FontDescriptor{..} = do
     cMap <- fromList <$> mapM (toGlyph face) indices
 
     ref  <- mkWeak face lib (Just $ freeLibrary lib)
-    let fontName = (familyName face) ++ "-" ++ (styleName face)
+    let fontName = familyName face ++ "-" ++ styleName face
     return $ Font fontName cMap descr face ref
     where
         setSizes = flip . flip setFaceCharSize

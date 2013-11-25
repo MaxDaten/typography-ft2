@@ -2,31 +2,31 @@ module Graphics.Font.FontFace where
 
 
 
-import Foreign hiding (newForeignPtr, unsafePerformIO)
-import Foreign.Marshal
-import Foreign.Concurrent
-import Foreign.C.String
+import           Foreign                                             hiding (newForeignPtr, unsafePerformIO)
+import           Foreign.C.String
+import           Foreign.Concurrent
 
-import Data.Char
-import Control.Monad
-import Control.Applicative
+import           Control.Applicative
+import           Control.Monad
+import           Data.Char
 
 
-import Graphics.Rendering.FreeType.Internal as FT
-import Graphics.Rendering.FreeType.Internal.Face as F
-import Graphics.Rendering.FreeType.Internal.Bitmap as B
-import Graphics.Rendering.FreeType.Internal.PrimitiveTypes as PT
-import Graphics.Rendering.FreeType.Internal.GlyphSlot as GS
+import           Graphics.Rendering.FreeType.Internal                as FT
+import           Graphics.Rendering.FreeType.Internal.Bitmap         as B
+import           Graphics.Rendering.FreeType.Internal.Face           as F hiding (ascender, descender)
+import qualified Graphics.Rendering.FreeType.Internal.Face           as F (ascender, descender)
+import           Graphics.Rendering.FreeType.Internal.GlyphSlot      as GS
+import           Graphics.Rendering.FreeType.Internal.PrimitiveTypes as PT
 
-import Graphics.Font.FontLibrary
-import Graphics.Font.BitmapLoader
+import           Graphics.Font.BitmapLoader
+import           Graphics.Font.FontLibrary
 
-import Codec.Picture
+import           Codec.Picture
 
 
 
 type FontFaceFPtr = ForeignPtr FT_FaceRec_
-data FontFace = FontFace 
+data FontFace = FontFace
     { faceFrgnPtr   :: FontFaceFPtr
     , numFaces      :: Integer
     , faceIndex     :: Integer
@@ -41,6 +41,7 @@ data FontFace = FontFace
     , ascender      :: Int -- Int16
     , descender     :: Int -- Int16
     , lineHeight    :: Int -- Int16
+    , unitsPerEM    :: Int
     -- charmaps
     -- generic
     -- bbox
@@ -54,29 +55,29 @@ type DeviceResolution = (Integer, Integer)
 type GlyphIndex = Int
 
 
-data LoadMode = 
+data LoadMode =
       LoadDefault
-    | LoadNoScale 
-    | LoadNoHinting 
+    | LoadNoScale
+    | LoadNoHinting
     | LoadRender
-    | LoadNoBitmap 
-    | LoadVerticalLayout  
-    | LoadForceAutohint 
-    | LoadCropBitmap 
+    | LoadNoBitmap
+    | LoadVerticalLayout
+    | LoadForceAutohint
+    | LoadCropBitmap
     | LoadPedantic
-    | LoadIgnoreGlobalAdvanceWidth   
-    | LoadNoRecurse 
-    | LoadIgnoreTransform 
+    | LoadIgnoreGlobalAdvanceWidth
+    | LoadNoRecurse
+    | LoadIgnoreTransform
     | LoadMonochrome
-    | LoadLinearDesign 
-    | LoadNoAutohint 
+    | LoadLinearDesign
+    | LoadNoAutohint
 toLoadFlag :: LoadMode -> Int32
 toLoadFlag LoadDefault                  = ft_LOAD_DEFAULT
 toLoadFlag LoadNoScale                  = ft_LOAD_NO_SCALE
 toLoadFlag LoadNoHinting                = ft_LOAD_NO_HINTING
 toLoadFlag LoadRender                   = ft_LOAD_RENDER
 toLoadFlag LoadNoBitmap                 = ft_LOAD_NO_BITMAP
-toLoadFlag LoadVerticalLayout           = ft_LOAD_VERTICAL_LAYOUT 
+toLoadFlag LoadVerticalLayout           = ft_LOAD_VERTICAL_LAYOUT
 toLoadFlag LoadForceAutohint            = ft_LOAD_FORCE_AUTOHINT
 toLoadFlag LoadCropBitmap               = ft_LOAD_CROP_BITMAP
 toLoadFlag LoadPedantic                 = ft_LOAD_PEDANTIC
@@ -89,12 +90,12 @@ toLoadFlag LoadNoAutohint               = ft_LOAD_NO_AUTOHINT
 
 
 newFontFace :: FontLibrary -> FilePath -> FaceIndex -> IO FontFace
-newFontFace lib fontfile index = 
+newFontFace lib fontfile index =
         withCString fontfile $ \file -> do
             facePtr <- malloc
             err     <- ft_New_Face lib file (fromIntegral index) facePtr
             when (err /= 0) $ error $ "ft_New_Face error: " ++ show err
-            fPtr <- peek facePtr >>= \ptr -> newForeignPtr ptr (free ptr) 
+            fPtr <- peek facePtr >>= \ptr -> newForeignPtr ptr (free ptr)
             FontFace fPtr
                 <$> (fromIntegral <$> fPtr `doPeek` num_faces)
                 <*> (fromIntegral <$> fPtr `doPeek` face_index)
@@ -108,6 +109,7 @@ newFontFace lib fontfile index =
                 <*> (fromIntegral <$> fPtr `doPeek` F.ascender)
                 <*> (fromIntegral <$> fPtr `doPeek` F.descender)
                 <*> (fromIntegral <$> fPtr `doPeek` height)
+                <*> (fromIntegral <$> fPtr `doPeek` units_per_EM)
     where
         doPeek ptr f = withForeignPtr ptr (peek . f)
         free ptr = do
@@ -118,7 +120,7 @@ newFontFace lib fontfile index =
 setFaceCharSize :: FontFace -> CharSize -> DeviceResolution -> IO FontFace
 setFaceCharSize face (charWidth, charHeigt) (devWidth, devHeight) =
     withForeignPtr (faceFrgnPtr face) $ \ptr -> do
-        err <- ft_Set_Char_Size ptr 
+        err <- ft_Set_Char_Size ptr
                 (fromIntegral charWidth) (fromIntegral charHeigt)
                 (fromIntegral devWidth) (fromIntegral devHeight)
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
@@ -127,7 +129,7 @@ setFaceCharSize face (charWidth, charHeigt) (devWidth, devHeight) =
 
 getAllFaceCharIndices :: FontFace -> IO [(GlyphIndex, Char)]
 getAllFaceCharIndices face =
-    withForeignPtr (faceFrgnPtr face) $ \ptr -> do
+    withForeignPtr (faceFrgnPtr face) $ \ptr ->
         alloca $ \gPtr -> do
             charCode    <- ft_Get_First_Char ptr gPtr
             gidx        <- peek gPtr
@@ -139,9 +141,7 @@ getAllFaceCharIndices face =
             charC <- ft_Get_Next_Char fPtr c gPtr
             glypI <- peek gPtr
             ls    <- getNext fPtr charC gPtr
-            return $ (if glypI /= 0
-                        then [(fromIntegral glypI, chr . fromIntegral $ charC)]
-                        else []) ++ ls
+            return $ [(fromIntegral glypI, chr . fromIntegral $ charC) | glypI /= 0]
 
 
 loadFaceCharImage :: (Pixel a) => FontFace -> Char -> [LoadMode] -> FontBitmapLoader IO a -> IO (Image a)
@@ -162,29 +162,3 @@ loadFaceCharImage face code mode imageLoader =
 loadModeBits :: [LoadMode] -> Int32
 loadModeBits = foldr ((.|.) . toLoadFlag) 0
 
-{--
-data RenderMode =
-      RenderModeNormal
-    | RenderModeLight
-    | RenderModeMono
-    | RenderModeLCD
-toRenderModeFlag :: RenderMode -> Int
-toRenderModeFlag RenderModeNormal = fromIntegral ft_RENDER_MODE_NORMAL
-toRenderModeFlag RenderModeLight = ft_RENDER_MODE_LIGHT
-toRenderModeFlag RenderModeMono = ft_RENDER_MODE_MONO
-toRenderModeFlag RenderModeLCD = ft_RENDER_MODE_LCD
---}
-
-
-{--
-
-
-
-type GlypLoadFlags = Int
-loadFaceGlyph :: FontFace -> GlyphIndex -> Maybe GlypLoadFlags -> IO ()
-loadFaceGlyph face glyphI flags =
-    withForeignPtr (faceFrgnPtr face) $ \ptr -> do
-        let flags' = maybe 0 id flags
-        err <- ft_Load_Glyph ptr (fromIntegral glyphI) (fromIntegral flags')
-        when (err /= 0) $ error $ "ft_Load_Glyph error: " ++ show err
---}
