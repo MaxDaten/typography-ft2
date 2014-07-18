@@ -2,9 +2,10 @@ module Graphics.Font.FontFace where
 
 
 
-import           Foreign                                             hiding (newForeignPtr, unsafePerformIO)
+import           Foreign                                             hiding (newForeignPtr, free)
 import           Foreign.C.String
 import           Foreign.Concurrent
+import           System.IO
 
 import           Control.Applicative
 import           Control.Monad
@@ -22,7 +23,6 @@ import           Graphics.Font.BitmapLoader
 import           Graphics.Font.FontLibrary
 
 import           Codec.Picture
-
 
 
 type FontFaceFPtr = ForeignPtr FT_FaceRec_
@@ -90,63 +90,63 @@ toLoadFlag LoadNoAutohint               = ft_LOAD_NO_AUTOHINT
 
 
 newFontFace :: FontLibrary -> FilePath -> FaceIndex -> IO FontFace
-newFontFace lib fontfile index =
-        withCString fontfile $ \file -> do
-            facePtr <- malloc
-            err     <- ft_New_Face lib file (fromIntegral index) facePtr
-            when (err /= 0) $ error $ "ft_New_Face error: " ++ show err
-            fPtr <- peek facePtr >>= \ptr -> newForeignPtr ptr (free ptr)
-            FontFace fPtr
-                <$> (fromIntegral <$> fPtr `doPeek` num_faces)
-                <*> (fromIntegral <$> fPtr `doPeek` face_index)
-                <*> (fromIntegral <$> fPtr `doPeek` face_flags)
-                <*> (fromIntegral <$> fPtr `doPeek` style_flags)
-                <*> (fromIntegral <$> fPtr `doPeek` num_glyphs)
-                <*> (peekCString  =<< fPtr `doPeek` family_name)
-                <*> (peekCString  =<< fPtr `doPeek` style_name)
-                <*> (fromIntegral <$> fPtr `doPeek` num_fixed_sizes)
-                <*> (fromIntegral <$> fPtr `doPeek` num_charmaps)
-                <*> (fromIntegral <$> fPtr `doPeek` F.ascender)
-                <*> (fromIntegral <$> fPtr `doPeek` F.descender)
-                <*> (fromIntegral <$> fPtr `doPeek` height)
-                <*> (fromIntegral <$> fPtr `doPeek` units_per_EM)
+newFontFace lib fontfile index = withBinaryFile fontfile ReadMode $ \hndl -> hndl `seq` do -- just dummy open for error checking
+    withCString fontfile $ \file -> do
+        facePtr <- malloc
+        err     <- ft_New_Face lib file (fromIntegral index) facePtr
+        when (err /= 0) $ error $ "ft_New_Face error: " ++ show err
+        fPtr <- peek facePtr >>= \ptr -> newForeignPtr ptr (free ptr)
+        FontFace fPtr
+            <$> (fromIntegral <$> fPtr `doPeek` num_faces)
+            <*> (fromIntegral <$> fPtr `doPeek` face_index)
+            <*> (fromIntegral <$> fPtr `doPeek` face_flags)
+            <*> (fromIntegral <$> fPtr `doPeek` style_flags)
+            <*> (fromIntegral <$> fPtr `doPeek` num_glyphs)
+            <*> (peekCString  =<< fPtr `doPeek` family_name)
+            <*> (peekCString  =<< fPtr `doPeek` style_name)
+            <*> (fromIntegral <$> fPtr `doPeek` num_fixed_sizes)
+            <*> (fromIntegral <$> fPtr `doPeek` num_charmaps)
+            <*> (fromIntegral <$> fPtr `doPeek` F.ascender)
+            <*> (fromIntegral <$> fPtr `doPeek` F.descender)
+            <*> (fromIntegral <$> fPtr `doPeek` height)
+            <*> (fromIntegral <$> fPtr `doPeek` units_per_EM)
     where
-        doPeek ptr f = withForeignPtr ptr (peek . f)
-        free ptr = do
-            err <- ft_Done_Face ptr
-            when (err /= 0) $ error $ "ft_Done_Face error: " ++ show err
+    doPeek ptr f = withForeignPtr ptr (peek . f)
+    free ptr = do
+        err <- ft_Done_Face ptr
+        when (err /= 0) $ error $ "ft_Done_Face error: " ++ show err
 
 
 setFaceCharSize :: FontFace -> CharSize -> DeviceResolution -> IO FontFace
-setFaceCharSize face (charWidth, charHeigt) (devWidth, devHeight) =
-    withForeignPtr (faceFrgnPtr face) $ \ptr -> do
+setFaceCharSize fontFace (charWidth, charHeigt) (devWidth, devHeight) =
+    withForeignPtr (faceFrgnPtr fontFace) $ \ptr -> do
         err <- ft_Set_Char_Size ptr
                 (fromIntegral charWidth) (fromIntegral charHeigt)
                 (fromIntegral devWidth) (fromIntegral devHeight)
-        when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
-        return face
+        when (err /= 0) $ error $ show ptr ++ "* ft_Set_CharSize error:: " ++ show err
+        return fontFace
 
 
 getAllFaceCharIndices :: FontFace -> IO [(GlyphIndex, Char)]
-getAllFaceCharIndices face =
-    withForeignPtr (faceFrgnPtr face) $ \ptr ->
+getAllFaceCharIndices fontFace =
+    withForeignPtr (faceFrgnPtr fontFace) $ \facePtr ->
         alloca $ \gPtr -> do
-            charCode    <- ft_Get_First_Char ptr gPtr
+            charCode    <- ft_Get_First_Char facePtr gPtr
             gidx        <- peek gPtr
-            ls          <- getNext ptr charCode gPtr
+            ls          <- getNext facePtr charCode gPtr
             return $ (fromIntegral gidx, chr . fromIntegral $ charCode):ls
     where
-        getNext fPtr 0 gPtr = return []
-        getNext fPtr c gPtr = do
-            charC <- ft_Get_Next_Char fPtr c gPtr
+        getNext _ 0 _ = return []
+        getNext facePtr c gPtr = do
+            charC <- ft_Get_Next_Char facePtr c gPtr
             glypI <- peek gPtr
-            ls    <- getNext fPtr charC gPtr
-            return $ [(fromIntegral glypI, chr . fromIntegral $ charC) | glypI /= 0]
+            ls    <- getNext facePtr charC gPtr
+            return $ [(fromIntegral glypI, chr . fromIntegral $ charC) | glypI /= 0] ++ ls
 
 
 loadFaceCharImage :: (Pixel a) => FontFace -> Char -> [LoadMode] -> FontBitmapLoader IO a -> IO (Image a)
-loadFaceCharImage face code mode imageLoader =
-    withForeignPtr (faceFrgnPtr face) $ \ptr -> do
+loadFaceCharImage fontFace code mode imageLoader =
+    withForeignPtr (faceFrgnPtr fontFace) $ \ptr -> do
 
         err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (loadModeBits mode)
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err

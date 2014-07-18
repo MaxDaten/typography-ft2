@@ -1,14 +1,10 @@
+{-# LANGUAGE BangPatterns #-}
 {--
 http://www.freetype.org/freetype2/docs/tutorial/step1.html
 --}
 module Main where
 
 import Prelude hiding (lookup)
-import Foreign hiding (newForeignPtr, unsafePerformIO)
-import Foreign.Marshal
-import Foreign.Concurrent
-import Foreign.C.String
-import System.IO.Unsafe
 
 import Control.Monad
 import Control.Applicative
@@ -16,10 +12,9 @@ import Control.Applicative
 import System.FilePath
 
 import Data.Char
-import Data.Map (toList, lookup)
+import Data.Map (toList, lookup, size)
 
 import Graphics.Font
-import Graphics.Font.FontGlyph
 import Codec.Picture
 
 {--
@@ -28,17 +23,22 @@ import Codec.Picture
 "`abcdefghijklmnopqrstuvwxyz{|}~"
 --}
 
+fontPath :: FilePath
 fontPath = "font" </> "SourceCodePro-Regular.otf"
+charFolder :: FilePath
 charFolder = "chars"
-main = do
+
+main :: IO ()
+main = withNewLibrary $ \lib -> do
     let descr = FontDescriptor
             { charSize = (0, 16*64)
             , deviceRes = (600, 600)
             }
-    font <- loadFont fontPath descr
-    let imgs = generateAllCharImgs font Monochrome
+    font <- loadFont lib fontPath descr
+    imgs <- generateAllCharImgs font Monochrome
 
-    forM_ (toList imgs) $ \(c, img) -> do
+    print $ "_loaded chars: " ++ show (size imgs)
+    forM_ (toList imgs) $ \(!c, !img) -> do
         print c
         print $ glyphMetrics <$> lookup c (charMap font)
         writePng (charFolder </> "char" ++ show (ord c) ++ ".png") img
