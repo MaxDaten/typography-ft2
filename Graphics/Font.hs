@@ -16,7 +16,10 @@ import Data.Map.Strict                              hiding ( map )
 import Data.Traversable                             ( sequenceA )
 import Control.Applicative
 
-import Graphics.Font.FontLibrary    as FontLibrary  ( FontLibrary, withNewLibrary )
+import Graphics.Font.FontLibrary    as FontLibrary  ( FontLibrary
+                                                    , withNewLibrary
+                                                    , makeLibrary
+                                                    , freeLibrary )
 import Graphics.Font.FontFace       as FontFace
 import Graphics.Font.FontGlyph
 import Graphics.Font.BitmapLoader
@@ -73,7 +76,7 @@ generateCharImg font mode char =
         Gray8      -> load grayLoader [LoadRender]
         Monochrome -> load monoLoader [LoadRender, LoadMonochrome]
     where
-        load loader flags = loadFaceCharImage (fontFace font) char flags loader
+    load loader flags = loadFaceCharImage (fontFace font) char flags loader
 
 
 generateAllCharImgs :: Font -> FontLoadMode -> IO (Map Char (Image Pixel8))

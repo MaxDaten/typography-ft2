@@ -27,5 +27,6 @@ freeLibrary lib = do
     err <- ft_Done_FreeType lib
     when (err /= 0) $ error $ "ft_Done_FreeType error: " ++ show err
 
+
 withNewLibrary :: (FontLibrary -> IO a) -> IO a
 withNewLibrary = bracket makeLibrary freeLibrary

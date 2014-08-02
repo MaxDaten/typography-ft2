@@ -49,9 +49,9 @@ data FontFace = FontFace
     } deriving (Show)
 
 
-type FaceIndex = Integer
-type CharSize = (Integer, Integer)
-type DeviceResolution = (Integer, Integer)
+type FaceIndex = Int
+type CharSize = (Int, Int)
+type DeviceResolution = (Int, Int)
 type GlyphIndex = Int
 
 
@@ -151,8 +151,7 @@ loadFaceCharImage fontFace code mode imageLoader =
         err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (loadModeBits mode)
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
 
-        slot    <- peek $ glyph ptr
-        bm      <- peek $ bitmap slot
+        bm      <- peek . bitmap =<< peek (glyph ptr)
 
         let w = fromIntegral $ width bm
             h = fromIntegral $ rows bm

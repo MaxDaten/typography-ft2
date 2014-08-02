@@ -28,7 +28,7 @@ library
                           Graphics.Font.BitmapLoader
   -- other-modules:       
   -- other-extensions:
-  ghc-options:  -Wall -threaded -O2
+  ghc-options:  -Wall -threaded
 
   build-depends:            base              <      5
                           , containers        >=     0.5
@@ -58,7 +58,7 @@ executable LibTest
 
     hs-source-dirs:       examples
     main-is:              LibTest.hs
-    ghc-options:  -Wall -threaded -O2
+    ghc-options:          -Wall -threaded
 
     build-depends:          base
                           , freetype2
@@ -67,4 +67,21 @@ executable LibTest
                           , typography-ft2
                           , JuicyPixels
                           , directory
+    default-language:     Haskell2010
+
+
+executable CharRenderer
+    if flag(library-only)
+      Buildable: False
+
+    hs-source-dirs:       examples
+    main-is:              CharRenderer.hs
+    ghc-options:          -Wall -threaded
+
+    build-depends:          base
+                          , typography-ft2
+                          , JuicyPixels
+                          , filepath
+                          , containers
+                          , ReadArgs
     default-language:     Haskell2010
