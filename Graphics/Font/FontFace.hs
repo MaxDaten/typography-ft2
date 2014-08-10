@@ -151,7 +151,8 @@ loadFaceCharImage fontFace code mode imageLoader =
         err     <- ft_Load_Char ptr (fromIntegral . ord $ code) (loadModeBits mode)
         when (err /= 0) $ error $ "ft_Set_CharSize error: " ++ show err
 
-        bm      <- peek . bitmap =<< peek (glyph ptr)
+        slot    <- peek $ glyph ptr
+        bm      <- peek $ bitmap slot
 
         let w = fromIntegral $ width bm
             h = fromIntegral $ rows bm
