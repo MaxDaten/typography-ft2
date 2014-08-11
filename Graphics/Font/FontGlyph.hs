@@ -1,10 +1,12 @@
 {-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE DeriveGeneric              #-}
 module Graphics.Font.FontGlyph
     ( module Graphics.Font.FontGlyph
     , module GM
     ) where
 
 import Foreign hiding (newForeignPtr)
+import GHC.Generics
 
 import Control.Monad
 import Control.Applicative
@@ -28,19 +30,19 @@ data GlyphMetrics = GlyphMetrics
     , glyVertBearingX  :: Integer
     , glyVertBearingY  :: Integer
     , glyVertAdvance   :: Integer
-    } deriving (Show)
+    } deriving ( Show, Eq, Generic )
 
 data FontGlyph = FontGlyph
     { glyphIndex    :: GlyphIndex
     , glyphMetrics  :: GlyphMetrics
-    } -- leeek! the glyph isnt freed
+    } deriving ( Show, Eq, Generic )
 
 
 
-loadGlyph :: FontFace -> GlyphIndex -> [LoadMode] -> IO FontGlyph
+loadGlyph :: FontFaceFPtr -> GlyphIndex -> [LoadMode] -> IO FontGlyph
 loadGlyph fontface gindex mode = do
     g <- newFontGlyphPtr
-    withForeignPtr (faceFrgnPtr fontface) $ \fptr -> do
+    withForeignPtr fontface $ \fptr -> do
         errL <- ft_Load_Glyph fptr (fromIntegral gindex) (loadModeBits mode)
         when (errL /= 0) $ error $ "ft_Load_Glyph error: " ++ show errL
         
@@ -58,9 +60,9 @@ loadGlyph fontface gindex mode = do
 
 
 
-getFaceGlyphIndex :: FontFace -> Char -> IO GlyphIndex
+getFaceGlyphIndex :: FontFaceFPtr -> Char -> IO GlyphIndex
 getFaceGlyphIndex fontface char =
-    withForeignPtr (faceFrgnPtr fontface) $ \ptr -> 
+    withForeignPtr fontface $ \ptr -> 
         fromIntegral <$> ft_Get_Char_Index ptr (fromIntegral $ ord char)
 
 

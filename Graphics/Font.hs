@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns  #-}
 {-# LANGUAGE TupleSections   #-}
+{-# LANGUAGE DeriveGeneric   #-}
 
 -- | simple haskell interface for freetype2
 --
@@ -11,6 +12,8 @@ module Graphics.Font
     , module FontLibrary
     , module Graphics.Font.FontGlyph
     ) where
+
+import GHC.Generics
 
 import Data.Map.Strict                              hiding ( map )
 import Data.Traversable                             ( sequenceA )
@@ -39,35 +42,36 @@ data Font = Font
     { fontName  :: !String
     , charMap   :: !(Map Char FontGlyph)
     , fontDescr :: !FontDescriptor
-    , fontFace  :: !FontFace
+    , fontFace  :: !(FontFaceFPtr,FontFace)
     , fontLib   :: !(FontLibrary)
     }
 
 data FontLoadMode = 
       Gray8
     | Monochrome
+    deriving ( Show, Eq, Ord, Enum, Generic )
 
 
 loadFont :: FontLibrary -> FilePath -> FontDescriptor -> IO Font
 loadFont flib fontfile descr@FontDescriptor{..} = do
 
-    face <- newFontFace flib fontfile 0 >>= setSizes charSize deviceRes
+    (fpt,face) <- newFontFace flib fontfile 0
+    setFaceCharSize fpt charSize deviceRes 
 
-    indices <- getAllFaceCharIndices face
-    cMap <- fromList <$> mapM (toGlyph face) indices
+    indices <- getAllFaceCharIndices fpt
+    cMap <- fromList <$> mapM (toGlyph fpt) indices
 
     let fontName = familyName face ++ "-" ++ styleName face
-    return $ Font fontName cMap descr face flib
+    return $ Font fontName cMap descr (fpt,face) flib
 
     where
 
-    setSizes = flip . flip setFaceCharSize
     toGlyph face (gindex, char) = (char,) <$> loadGlyph face gindex [LoadDefault]
 
 
 loadCharGlyph :: Font -> [LoadMode] -> Char -> IO FontGlyph
 loadCharGlyph Font{fontFace} mode c = 
-    getFaceGlyphIndex fontFace c >>= flip (loadGlyph fontFace) mode
+    getFaceGlyphIndex (fst fontFace) c >>= flip (loadGlyph (fst fontFace)) mode
 
 
 generateCharImg :: Font -> FontLoadMode -> Char -> IO (Image Pixel8)
@@ -76,7 +80,7 @@ generateCharImg font mode char =
         Gray8      -> load grayLoader [LoadRender]
         Monochrome -> load monoLoader [LoadRender, LoadMonochrome]
     where
-    load loader flags = loadFaceCharImage (fontFace font) char flags loader
+    load loader flags = loadFaceCharImage (fst $ fontFace font) char flags loader
 
 
 generateAllCharImgs :: Font -> FontLoadMode -> IO (Map Char (Image Pixel8))
