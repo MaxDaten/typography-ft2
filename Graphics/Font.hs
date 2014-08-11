@@ -35,7 +35,7 @@ pt = (*) 64
 data FontDescriptor = FontDescriptor
     { charSize  :: CharSize             -- | pt (1/64 pixel)
     , deviceRes :: DeviceResolution     -- | for dpi calculation
-    } deriving ( Show, Eq, Ord )
+    } deriving ( Show, Eq, Ord, Generic )
 
 
 data Font = Font
